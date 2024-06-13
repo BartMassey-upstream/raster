@@ -103,12 +103,7 @@ extern crate image as piston_image;
 extern crate png;
 
 // from rust
-use std::ascii::AsciiExt;
-use std::fs::File;
 use std::path::Path;
-
-// from external crate
-use piston_image::GenericImage;
 
 // from local crate
 use error::{RasterError, RasterResult};
@@ -141,34 +136,17 @@ pub use transform::TransformMode;
 /// let image = raster::open("tests/in/sample.png").unwrap();
 /// println!("{:?}", image.bytes);
 /// ```
-pub fn open(image_file: &str) -> RasterResult<Image> {
-    let path = Path::new(image_file);
-    let ext = path.extension()
+pub fn open<P: AsRef<Path>>(image_file: P) -> RasterResult<Image> {
+    let ext = image_file
+        .as_ref()
+        .extension()
         .and_then(|s| s.to_str())
         .map_or("".to_string(), |s| s.to_ascii_lowercase());
 
-    // Open the file with basic error check
-    let file = File::open(image_file)?;
-
-    match &ext[..] {
-        "gif" => Ok(endec::decode_gif(&file)?),
-        "jpg" | "jpeg" => {
-            let src = piston_image::open(image_file)?;
-            let (w, h) = src.dimensions();
-            let mut bytes = Vec::with_capacity((w * h) as usize * 4);
-            for y in 0..h {
-                for x in 0..w {
-                    let p = src.get_pixel(x, y);
-                    bytes.extend_from_slice(&p.data[0..4]);
-                }
-            }
-            Ok(Image {
-                width: w as i32,
-                height: h as i32,
-                bytes: bytes,
-            })
-        }
-        "png" => Ok(endec::decode_png(&file)?),
+    match ext.as_ref() {
+        "gif" => endec::decode_file(image_file, ImageFormat::Gif),
+        "jpeg" | "jpg" => endec::decode_file(image_file, ImageFormat::Jpeg),
+        "png" => endec::decode_file(image_file, ImageFormat::Png),
         _ => Err(RasterError::UnsupportedFormat(ext)),
     }
 }

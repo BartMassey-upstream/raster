@@ -7,6 +7,7 @@ use std::io::BufWriter;
 
 // from external crate
 use gif;
+use piston_image::GenericImage;
 use png;
 
 // from local crate
@@ -95,4 +96,33 @@ pub fn encode_png(image: &Image, path: &Path) -> RasterResult<()> {
     png::HasParameters::set(&mut encoder, png::BitDepth::Eight);
     let mut writer = encoder.write_header()?;
     Ok(writer.write_image_data(&image.bytes)?)
+}
+
+pub fn decode_file<P: AsRef<Path>>(image_file: P, format: ImageFormat) -> RasterResult<Image> {
+    match format {
+        ImageFormat::Gif => {
+            let file = File::open(image_file)?;
+            Ok(decode_gif(&file)?)
+        }
+        ImageFormat::Jpeg => {
+            let src = piston_image::open(image_file)?;
+            let (w, h) = src.dimensions();
+            let mut bytes = Vec::with_capacity((w * h) as usize * 4);
+            for y in 0..h {
+                for x in 0..w {
+                    let p = src.get_pixel(x, y);
+                    bytes.extend_from_slice(&p.data[0..4]);
+                }
+            }
+            Ok(Image {
+                width: w as i32,
+                height: h as i32,
+                bytes: bytes,
+            })
+        }
+        ImageFormat::Png => {
+            let file = File::open(image_file)?;
+            Ok(decode_png(&file)?)
+        }
+    }
 }

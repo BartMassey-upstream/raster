@@ -51,6 +51,10 @@ impl<'a> Image {
         }
     }
 
+    pub fn from_bytes(w: i32, h: i32, bytes: &[u8]) -> RasterResult<Image> {
+        todo!()
+    }
+
     /// Check if there is a pixel at this location given by x and y.
     ///
     /// # Examples
